@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <title>Resume.io to PDF</title>
+    <style>
+        :root {
+            color: #1f2933;
+            font-family: "Inter", sans-serif;
+            background: #f5f7fa;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+        }
+
+        .container {
+            width: min(100%, 760px);
+            margin: 0 auto;
+            padding: 48px 20px;
+        }
+
+        .header {
+            margin-bottom: 28px;
+        }
+
+        .title {
+            margin: 0 0 8px;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            margin: 0;
+            color: #52616f;
+            line-height: 1.5;
+        }
+
+        .panel {
+            background: #ffffff;
+            border: 1px solid #dde3ea;
+            border-radius: 8px;
+            padding: 22px;
+            margin-bottom: 18px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        }
+
+        .panel_secondary {
+            box-shadow: none;
+        }
+
+        .panel_title {
+            margin: 0 0 18px;
+            font-size: 1.05rem;
+            font-weight: 600;
+        }
+
+        .form {
+            display: grid;
+            gap: 14px;
+        }
+
+        .label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #334e68;
+        }
+
+        .input {
+            width: 100%;
+            min-height: 48px;
+            padding: 12px 14px;
+            border: 1px solid #bcccdc;
+            border-radius: 6px;
+            font: inherit;
+            color: #1f2933;
+            background: #ffffff;
+        }
+
+        .input:focus {
+            outline: 2px solid #2684ff;
+            outline-offset: 1px;
+            border-color: #2684ff;
+        }
+
+        .input_error {
+            border-color: #d64545;
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .button {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 132px;
+            min-height: 46px;
+            padding: 0 18px;
+            border: 0;
+            border-radius: 6px;
+            background: #102a43;
+            color: #ffffff;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 600;
+        }
+
+        .button:disabled {
+            cursor: wait;
+            opacity: 0.75;
+        }
+
+        .message {
+            min-height: 20px;
+            margin: 0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .message_error {
+            color: #b42318;
+        }
+
+        .message_muted {
+            color: #627d98;
+        }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        .is_loading .spinner {
+            display: block;
+        }
+
+        .is_loading .button_text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+<main class="container">
+    <header class="header">
+        <h1 class="title">Resume.io to PDF</h1>
+        <p class="subtitle">Render an authenticated Resume.io preview as a high-resolution PDF.</p>
+    </header>
+
+    <section class="panel">
+        <h2 class="panel_title">Browser render</h2>
+        <form class="form" id="browserForm">
+            <label class="label" for="previewUrl">Authenticated preview URL</label>
+            <input id="previewUrl" class="input" type="url" name="preview_url" placeholder="https://resume.io/app/resumes/..." required>
+            <p class="message message_muted" id="browserHelp">Requires RESUMEIO_COOKIE in the running container.</p>
+            <p class="message message_error" id="browserError" role="alert"></p>
+            <div class="actions">
+                <button id="browserSubmit" class="button" type="submit">
+                    <span class="button_text">Render PDF</span>
+                    <svg class="spinner" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="42 150"></circle>
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <section class="panel panel_secondary">
+        <h2 class="panel_title">Rendering-token fallback</h2>
+        <form class="form" id="downloadForm" method="post">
+            <label class="label" for="renderingToken">Rendering token</label>
+            <input id="renderingToken" class="input" type="text" name="rendering_token" placeholder="24-character rendering token" maxlength="24">
+            <p class="message message_error" id="tokenError" role="alert"></p>
+            <div class="actions">
+                <button id="tokenSubmit" class="button" type="submit">
+                    <span class="button_text">Download</span>
+                    <svg class="spinner" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="42 150"></circle>
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </section>
+</main>
+
+<script>
+    const browserForm = document.getElementById("browserForm");
+    const browserSubmit = document.getElementById("browserSubmit");
+    const browserError = document.getElementById("browserError");
+    const previewUrlInput = document.getElementById("previewUrl");
+
+    const downloadForm = document.getElementById("downloadForm");
+    const tokenSubmit = document.getElementById("tokenSubmit");
+    const tokenError = document.getElementById("tokenError");
+    const tokenInput = document.getElementById("renderingToken");
+
+    function setLoading(button, isLoading) {
+        button.disabled = isLoading;
+        button.classList.toggle("is_loading", isLoading);
+    }
+
+    async function readError(response) {
+        try {
+            const body = await response.json();
+            return body.detail || "Request failed";
+        } catch (_) {
+            return "Request failed";
+        }
+    }
+
+    browserForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        browserError.textContent = "";
+        previewUrlInput.classList.remove("input_error");
+
+        const preview_url = new FormData(browserForm).get("preview_url").toString().trim();
+        if (!preview_url) {
+            browserError.textContent = "Enter a Resume.io preview URL.";
+            previewUrlInput.classList.add("input_error");
+            return;
+        }
+
+        setLoading(browserSubmit, true);
+        try {
+            const response = await fetch("/download/browser", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({preview_url, filename: "resume-browser.pdf"})
+            });
+
+            if (!response.ok) {
+                browserError.textContent = await readError(response);
+                previewUrlInput.classList.add("input_error");
+                return;
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "resume-browser.pdf";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            browserError.textContent = error.message || "Browser render failed.";
+        } finally {
+            setLoading(browserSubmit, false);
+        }
+    });
+
+    downloadForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        tokenError.textContent = "";
+        tokenInput.classList.remove("input_error");
+
+        const renderingToken = new FormData(downloadForm).get("rendering_token").toString().trim();
+        if (!/^[a-zA-Z0-9]{24}$/.test(renderingToken)) {
+            tokenError.textContent = "Enter a 24-character alphanumeric rendering token.";
+            tokenInput.classList.add("input_error");
+            return;
+        }
+
+        downloadForm.action = `/download/${renderingToken}`;
+        setLoading(tokenSubmit, true);
+        downloadForm.submit();
+    });
+
+    window.addEventListener("pageshow", function () {
+        setLoading(browserSubmit, false);
+        setLoading(tokenSubmit, false);
+    });
+</script>
+</body>
+</html>
