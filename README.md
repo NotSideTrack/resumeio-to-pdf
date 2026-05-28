@@ -55,14 +55,19 @@ Open http://localhost:8000, paste your authenticated Resume.io preview URL, and 
 2. Open the resume editor or preview page.
 3. Copy the browser URL, for example `https://resume.io/app/resumes/.../edit`.
 4. Open browser DevTools.
-5. Go to Application > Cookies > `https://resume.io`.
-6. Copy the cookie names and values into one header string in `.env`:
+5. Go to the **Network** tab.
+6. Select a Resume.io request such as `resumes`.
+7. Open **Headers** and copy the full `Cookie` request header value.
+
+![Where to find the Cookie request header in Chrome DevTools](docs/cookies.png)
+
+Paste that value into `.env` as `RESUMEIO_COOKIE`:
 
 ```env
 RESUMEIO_COOKIE=_resume_session=abc123xyz; remember_user_token=def456uvw; cookie3=value3
 ```
 
-Join cookie names and values as `name=value` pairs separated by `; `. Do not include line breaks.
+The value should be one line of `name=value` pairs separated by `; `. Do not include the word `Cookie:` itself.
 
 Do not commit `.env`. It contains your authenticated session.
 
